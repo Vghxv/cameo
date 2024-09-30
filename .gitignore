@@ -2,3 +2,5 @@
 *.cmo
 /bin
 /p
+peda*
+.gdb_history*
