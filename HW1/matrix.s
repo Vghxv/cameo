@@ -1,132 +1,150 @@
 .text
 .globl	main
-f:
-	pushq %rbp
-	movq %rsp, %rbp
-	subq $80, %rsp
-
-	// store i and c to stack
-	movq %rdi, 8(%rsp)
-	movq %rsi, 16(%rsp)
-
-	// if (i == N) return 0;
-	movq N(%rip), %rax
-	cmpq %rax, %rdi
-	je return_0
-
-	// Compute key = (c << L) | i
-	movq 16(%rsp), %rdx
-	movq $4, %rcx
-	shlq %cl, %rdx
-	orq 8(%rsp), %rdx
-	movq %rdx, 24(%rsp)
-
-	// Load memo[key] into %rax
-	movq 24(%rsp), %rcx
-	movl memo(,%rcx,4), %eax
-	movl %eax, 32(%rsp)
-	testl %eax, %eax 
-	jne return_memo
-
-	// int s = 0; int j = 0;
-	movl $0, 40(%rsp)
-	movl $0, 48(%rsp)
-
-loop_j:
-	cmpq $15, 48(%rsp)
-	jge end_loop_j
-
-	movq $1, %rax
-	movb 48(%rsp), %cl
-	shlq %cl, %rax
-	movq %rax, 56(%rsp)
-
-	movq 16(%rsp), %r8
-	andq 56(%rsp), %r8
-	testq %r8, %r8
-	jz continue_j
-
-	// x = m[i][j] + f(i + 1, c - col)
-	// m[i][j]
-	movq 8(%rsp), %r9
-	imulq $15, %r9
-	addq 48(%rsp), %r9
-	leaq m(,%r9,4), %r9
-	movq %r9, 64(%rsp)
-	
-	// i + 1
-	movl 8(%rsp), %edi
-	incl %eax
-
-	// c - col
-	movq 16(%rsp), %rsi
-	subq 56(%rsp), %rsi
-
-	call f
-
-	movl 64(%rsp), %edx
-	addl %eax, %edx
-	cmpq 40(%rsp), %rax
-	jle continue_j
-	movq %rax, 40(%rsp)
-
-continue_j:
-	incq 48(%rsp)
-	jmp loop_j
-
-end_loop_j:
-
-	movl 40(%rsp), %eax
-	movq 24(%rsp), %rcx
-	movl %eax, memo(, %rcx, 4)
-	addq $64, %rsp
-	movq %rsp, %rsp
-    popq %rsp
-	ret
-
-return_0:
-	movq 8(%rsp), %rdi
-	movq 16(%rsp), %rsi
-	xorq %rax, %rax
-	addq $64, %rsp
-	movq %rsp, %rsp
-	popq %rsp
-	ret
-
-return_memo:
-	movq 24(%rsp), %rcx
-	movl memo(,%rcx,4), %eax
-	addq $64, %rsp
-	movq %rbp, %rsp
-	popq %rbp
-	ret
 
 main:
 	pushq %rbp
 	movq %rsp, %rbp
-
-	xorq %rdi, %rdi
-	movq $1, %rsi
-	movq N(%rip), %rcx
-	shlq %cl, %rsi
-	decq %rsi
+	movl $0, %edi
+	movl $0x7fff, %esi
 
 	call f
 
-	movq %rax, %rsi
-	leaq result_msg(%rip), %rdi
-	
-	call printf
-	
+	movl %eax, %esi
+	leaq fmt(%rip), %rdi
 	xorq %rax, %rax
-	movq %rbp, %rsp
+	call printf
+
+	xorq %rax, %rax
 	popq %rbp
 	ret
 
-.data
-result_msg: .asciz "solution: %d\n"
-N: .long 15
-L: .long 4
+f:
+	pushq %rbp
+	movq %rsp, %rbp
+	pushq %rbx #?
+	subq $0x38, %rsp
+	movl %edi, -0x34(%rbp) # i
+	movl %esi, -0x38(%rbp) # c
+	cmpl $15, -0x34(%rbp)
+
+	jne .Lnot_end
+	movl $0, %eax
+	jmp .Lret
+
+.Lnot_end:
+	// int key = (c << 4) | i;
+	movl -0x38(%rbp), %eax
+	shll $4, %eax
+	orl -0x34(%rbp), %eax
+	movl %eax, -0x20(%rbp) # key
+	movl -0x20(%rbp), %eax
+	movslq
+	// int r = memo[key];🐛
+
+	// 😭
+	// lea 0(,%rax,4), %rdx
+	// leaq memo(%rip), %rax
+	// movl (%rdx,%rax), %eax
+
+	// ❓2
+	leaq memo(%rip), %rdx
+	movq (%rdx,%rax,4), %rax
+	
+	// ❓1
+	// lea memo(%rip), %rdx
+	// movl (%rdx,%rax,4), %eax
+	// cmpl $0, %eax
+
+	// 😭
+	movl %eax, -0x1c(%rbp)
+	cmpl $0, -0x1c(%rbp)
+	
+	je .Lmemo_not_found
+
+	// 😭 I type additional 'c'
+	movl -0x1c(%rbp), %eax
+	jmp .Lret
+
+.Lmemo_not_found:
+	movl $0, -0x24(%rbp) # j
+	movl $0, -0x28(%rbp) # s
+	jmp .Lif_j
+
+.Lloop_j:
+	movl -0x24(%rbp), %eax
+	movl $1, %edx
+	movl %eax, %ecx
+	shll %cl, %edx
+	movl %edx, %eax
+	movl %eax, -0x18(%rbp) # col
+	movl -0x38(%rbp), %eax
+	andl -0x18(%rbp), %eax
+	testl %eax, %eax
+	je .Lcontinue_j
+
+	movl -0x24(%rbp), %eax
+	movslq %eax, %rcx # j
+	movl -0x34(%rbp), %eax
+	movslq %eax, %rdx # i
+	
+	// 😭
+	movq %rdx, %rax
+	shlq $4, %rax
+	subq %rdx, %rax # i * 15?
+	addq %rcx, %rax
+	leaq 0(,%rax,4), %rdx
+	leaq m(%rip), %rax
+	movl (%rdx,%rax), %ebx
+	movl -0x38(%rbp), %eax
+	subl -0x18(%rbp), %eax
+	movl -0x34(%rbp), %edx
+	addl $1, %edx
+	movl %eax, %esi
+	movl %edx, %edi
+
+	// ❓
+	// shlq $4, %rdx
+	// subq %rdx, %rdx
+	// movl -0x24(%rbp), %eax
+	// addq %rax, %rdx
+	// leaq m(%rip), %rcx
+	// movl (%rcx,%rdx,4), %ebx
+
+	call f
+
+	addl %ebx, %eax
+	movl %eax, -0x14(%rbp)
+	movl -0x14(%rbp), %eax
+
+	cmpl -0x28(%rbp), %eax
+	jle .Lcontinue_j
+	movl -0x14(%rbp), %eax
+	movl %eax, -0x28(%rbp)
+	jmp .Lcontinue_j
+
+.Lcontinue_j:
+	addl $1, -0x24(%rbp)
+.Lif_j:
+	cmpl $15, -0x24(%rbp)
+	jle .Lloop_j
+	movl -20(%rbp), %eax # key
+	cdqe
+	lea memo(,%rax,4), %rcx
+	leaq   memo(%rip), %rdx
+	movl   -0x28(%rbp), %eax
+	movl   %eax, (%rcx,%rdx)
+	movl   -0x28(%rbp), %eax
+	movq   -0x8(%rbp), %rbx
+	leave
+	ret
+.Lret:
+	mov -0x8(%rbp), %rbx
+    leave
+    ret
+
+	.data
+fmt: .asciz "solution = %d\n"
+
 m:
 	.long	7
 	.long	53
