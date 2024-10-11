@@ -1,103 +1,95 @@
-.text
-.globl	main
+        .text
+	.globl	main
 
-// 🎉
-.set N, 15
+## int f(int i, int c) {
+##   if (i == N)
+##     return 0;
+##   int key = c << L | i;
+##   int r = memo[key];
+##   if (r != 0)
+##     return r;
+##   int s = 0, j = 0;
+##   for (j = 0; j < N; j++) {
+##     int col = 1 << j;
+##     if ((c & col) == 0)
+##       continue;
+##     int x = m[i][j] + f(i + 1, c - col);
+##     if (x > s) s = x;
+##   }
+##   memo[key] = s;
+##   return s;
+## }
 
+        .set    N, 15
+
+### i %rdi / c %rsi / key %rdx / j %rcx / s %rax / x,col %r8
 f:
-	// not necessary to push %rbp❌
-	// pushq %rbp
-	// movq %rsp, %rbp
-	// pushq %rbx #?
+        xorq    %rax, %rax      # s = 0
+        cmpq    $N, %rdi        # i == N ?
+        je      exit
+        movq    %rsi, %rdx      # key = c << L | i
+        salq    $4, %rdx
+        orq     %rdi, %rdx
+        movl    memo(,%rdx,4), %eax
+        testq   %rax, %rax
+        jnz     exit            # r != 0 ?
+        xorq    %rcx, %rcx      # j = 0
+        jmp     test
+loop:   movq    $1, %r8
+        salq    %cl, %r8        # col = 1 << j
+        testq   %rsi, %r8       # c & col == 0 ?
+        jz      continue
+        pushq   %rax            # save s, i, c, key, j
+        pushq   %rdi
+        pushq   %rsi
+        pushq   %rdx
+        pushq   %rcx
+        incq    %rdi            # i + 1
+        subq    %r8, %rsi       # c - col
+        call    f
+        movq    %rax, %r8
+        popq    %rcx            # restauration j, key, c, i, s
+        popq    %rdx
+        popq    %rsi
+        popq    %rdi
+        popq    %rax
+        movq    %rdi, %r9       # m[i][j]
+        imulq   $N, %r9
+        addq    %rcx, %r9
+        movl    m(,%r9,4), %r9d
+        addq    %r9, %r8        # x = m[i][j] + f(...)
+        cmpq    %rax, %r8       # x > s ? r8 > rax
+        cmovg   %r8, %rax
+continue:
+        incq    %rcx            # j++
+test:   cmpq    $N, %rcx        # j < N ?
+        jl      loop
+        movl    %eax, memo(,%rdx,4)
+exit:   ret
 
-	xorq %rax, %rax # s = 0
+## int main() {
+##   printf("solution = %d\n", f(0, (1 << N) - 1));
+##   return 0;
+## }
 
-	cmpq $N, %rdi # i == N ?
-	je exit
-
-	// int key = (c << 4) | i;
-	movq %rsi, %rdx
-	salq $4, %rdx
-	orq %rdi, %rdx
-
-	// if (r != 0) return r;✅
-	movl    memo(,%rdx,4), %eax
-	// why not load to rax❓bcz memo is 4 bytes long(maybe)
-
-	testq %rax, %rax
-	jnz exit
-	xorq %rcx, %rcx # j = 0
-
-	jmp test
-
-.Lloop_j:
-	movq $1, %r8
-	salq %cl, %r8
-
-	testq %rsi, %r8 # c & col == 0 ?
-	jz .Lcontinue_j
-
-	// going to call f(i + 1, c - col), saving s, i, c, key, j
-	pushq %rax # s, bcz f only return if and only if r != 0. So, here rax must be the same as s, which is 0
-	pushq %rdi # i
-	pushq %rsi # c
-	pushq %rdx # key
-	pushq %rcx # j
-
-	incq %rdi
-	subq %r8, %rsi
-
-	call f
-	
-	// restauration
-	movq %rax, %r8 # return value to r8
-	popq %rcx
-	popq %rdx
-	popq %rsi
-	popq %rdi
-	popq %rax
-	movq %rdi, %r9 # do i * 15
-	imulq $N, %r9
-	addq %rcx, %r9 # do i * 15 + j
-	movl m(,%r9,4), %r9d
-	addq %r9, %r8 # x = m[i][j] + f(...)
-	cmpq %rax, %r8 # x > s ?
-	cmovg %r8, %rax # do mov is comparison is greater
-
-.Lcontinue_j:
-	incq %rcx
-
-test:
-	cmpq $N, %rcx
-	jl .Lloop_j
-	movl %eax, memo(,%rdx,4)
-
-exit:
-	ret
 main:
-	// main function does not require stack frame
-	// pushq %rbp
-	// movq %rsp, %rbp
+        subq    $8, %rsp        # alignement
+        movq    $0, %rdi
+        movq    $1, %rsi
+        salq    $N, %rsi
+        decq    %rsi
+        call    f
+        movq	$format, %rdi   # first argument (format)
+        movq    %rax, %rsi      # second argument (f(...))
+        xorq    %rax, %rax      # %rax = 0 = no register vectors
+	call	printf
+        xorq    %rax, %rax      # exit with code 0
+        addq    $8, %rsp
+        ret
 
-	subq $8, %rsp # alignement ⭐
-	movq $0, %rdi
-	movq $1, %rsi
-	salq $N, %rsi
-	decq %rsi
-	call f
-	movq $fmt, %rdi # does not support PIC
-	// leaq fmt(%rip), %rdi supports PIC	
-	movq %rax, %rsi
-	xorq %rax, %rax
-	call printf
-	xorq %rax, %rax
-	addq $8, %rsp # alignement ⭐
-	ret
-
-
-	.data
-fmt:
-	.string "solution = %d\n"
+        .data
+format:
+        .string "solution = %d\n"
 m:
 	.long	7
 	.long	53
@@ -328,6 +320,3 @@ m:
 memo:
         .space	2097152
 
-## Local Variables:
-## compile-command: "gcc matrix.s && ./a.out"
-## End:
