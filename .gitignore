@@ -5,3 +5,6 @@
 peda*
 .gdb_history*
 *.zip
+._*
+HW2/mini-python/_build
+*~
