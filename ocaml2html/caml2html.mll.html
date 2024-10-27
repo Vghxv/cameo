@@ -1,0 +1,71 @@
+<html><head><title>caml2html.mll</title><style>.keyword { color: green; } .comment { color: #990000; }</style></head><body><pre>
+  1: {
+  2: let () =
+  3: 	if Array.length Sys.argv &lt;> 2
+  4: 	|| not (Sys.file_exists Sys.argv.(1)) then <span class="keyword">begin</span>
+  5: 		Printf.eprintf "usage: caml2html file\n";
+  6: 		exit 1
+  7: 	end
+  8: let file = Sys.argv.(1)
+  9: let cout = open_out (file ^ ".html")
+ 10: let print s = Printf.fprintf cout s
+ 11: let () =
+ 12: print "&lt;html>&lt;head>&lt;title>%s&lt;/title>&lt;style>" file;
+ 13: print ".keyword { color: green; } .comment { color: #990000; }";
+ 14: print "&lt;/style>&lt;/head>&lt;body>&lt;pre>"
+ 15: let count = ref 0
+ 16: let newline () = incr count; print "\n%3d: " !count
+ 17: let () = newline ()
+ 18: let is_keyword =
+ 19: let ht = Hashtbl.create 97 in
+ 20: List.iter
+ 21: 	(fun s -> Hashtbl.add ht s ())	
+ 22: 	[ "and"; "as"; "assert"; "asr"; "begin"; "class"];
+ 23: fun s -> Hashtbl.mem ht s
+ 24: }
+ 25: let ident =
+ 26: ['A'-'Z' 'a'-'z' '_'] ['A'-'Z' 'a'-'z' '0'-'9' '_']*
+ 27: rule scan = parse
+ 28: 	| ident <span class="keyword">as</span> s
+ 29: 		{ if is_keyword s then <span class="keyword">begin</span>
+ 30: 		print "&lt;span class=\"keyword\">%s&lt;/span>" s
+ 31: 		end else
+ 32: 		print "%s" s;
+ 33: 		scan lexbuf }
+ 34: 	| "\n"
+ 35: 		{ newline (); scan lexbuf }
+ 36: 	| "(*"
+ 37: 		{ print "&lt;span class=\"comment\">(*";
+ 38: 		comment lexbuf;
+ 39: 		print "&lt;/span>";
+ 40: 		scan lexbuf }
+ 41: 	| "&lt;" { print "&amp;lt;"; scan lexbuf }
+ 42: 	| "&amp;" { print "&amp;amp;"; scan lexbuf }
+ 43: 	| '"' { print "\""; string lexbuf; scan lexbuf }
+ 44: 	| "'\"'"
+ 45: 	| _ <span class="keyword">as</span> s { print "%s" s; scan lexbuf }
+ 46: 	| eof { () }
+ 47: 	
+ 48: <span class="keyword">and</span> comment = parse
+ 49: 	| "(*" { print "(*"; comment lexbuf; comment lexbuf }
+ 50: 	| "*)" { print "*)" }
+ 51: 	| eof { () }
+ 52: 	| "\n" { newline (); comment lexbuf }
+ 53: 	| '"' { print "\""; string lexbuf; comment lexbuf }
+ 54: 	| "'\"'"
+ 55: 	| _ <span class="keyword">as</span> s { print "%s" s; comment lexbuf }	
+ 56: <span class="keyword">and</span> string = parse
+ 57: 	| '"' { print "\"" }
+ 58: 	| "&lt;" { print "&amp;lt;"; string lexbuf }
+ 59: 	| "&amp;" { print "&amp;amp;"; string lexbuf }
+ 60: 	| "\\" _
+ 61: 	| _ <span class="keyword">as</span> s { print "%s" s; string lexbuf }
+ 62: {
+ 63: let () =
+ 64: 	scan (Lexing.from_channel (open_in file));
+ 65: 	print "&lt;/pre>\n&lt;/body>&lt;/html>\n";
+ 66: 	close_out cout
+ 67: }
+ 68: 	
+ 69: </pre>
+</body></html>
