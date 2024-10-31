@@ -1,5 +1,7 @@
 *.cmi
 *.cmo
+*.cmx
+*.o
 /bin
 /p
 peda*
