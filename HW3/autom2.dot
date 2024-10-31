@@ -1,0 +1,9 @@
+digraph A {
+ "# a1 b1 " [ shape = "rect"];
+ "# a1 b1 " -> "" [label="#"];
+ "# a1 b1 " -> "# a1 b1 " [label="a"];
+ "# a1 b1 " -> "a2 b2 " [label="b"];
+ "a2 b2 " -> "a2 b2 " [label="a"];
+ "a2 b2 " -> "# a1 b1 " [label="b"];
+ 
+}

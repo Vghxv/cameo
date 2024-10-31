@@ -1,0 +1,12 @@
+string: abbaaab
+--> "ab"
+--> "b"
+--> "aaab"
+
+string: aba
+--> "ab"
+exception End_of_file
+
+string: aac
+exception Failure("lexical error")
+
