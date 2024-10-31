@@ -45,56 +45,19 @@ let rec print_value = function
    the empty string, and the empty list are all considered to be
    False, and any other value to be True.
 *)
-let is_false = function
-  | Vnone
-  | Vbool false
-  | Vstring ""
-  | Vlist [||] -> true
-  | Vint n -> n = 0
-  | _ -> false
+let is_false v = match v with
+  | Vbool false -> true
+  | Vint 0 -> true
+  | Vint _ -> false
+  | _ -> false(* TODO (question 2) *)
 
-let is_true v = not (is_false v)
-
-(* Binary operators
-   - Operator + is overloaded: arithmetic addition, string concatenation,
-     and list concatenation.
-   - Operators // and % must fail if we attempt a division by zero.
-*)
-
-let rec compare_list a1 n1 a2 n2 i =
-  if i = n1 && i = n2 then 0
-  else if i = n1 then -1
-  else if i = n2 then 1
-  else let c = compare a1.(i) a2.(i) in
-       if c <> 0 then c else compare_list a1 n1 a2 n2 (i + 1)
-
-let rec compare_value v1 v2 = match v1, v2 with
-  | Vlist a1, Vlist a2 ->
-    compare_list a1 (Array.length a1) a2 (Array.length a2) 0
-  | _ -> compare v1 v2
-
-let binop op v1 v2 = match op, v1, v2 with
-  | Badd, Vint n1, Vint n2 -> Vint (n1+n2)
-  | Badd, Vstring s1, Vstring s2 -> Vstring (s1 ^ s2)
-  | Badd, Vlist l1, Vlist l2 -> Vlist (Array.append l1 l2)
-  | Bsub, Vint n1, Vint n2 -> Vint (n1-n2)
-  | Bmul, Vint n1, Vint n2 -> Vint (n1*n2)
-  | (Bdiv | Bmod), Vint _, Vint 0 -> error "division by zero"
-  | Bdiv, Vint n1, Vint n2 -> Vint (n1/n2)
-  | Bmod, Vint n1, Vint n2 -> Vint (n1 mod n2)
-  | Beq, _, _ -> Vbool (compare_value v1 v2 = 0)
-  | Bneq, _, _ -> Vbool (compare_value v1 v2 <> 0)
-  | Blt, _, _ -> Vbool (compare_value v1 v2 < 0)
-  | Ble, _, _ -> Vbool (compare_value v1 v2 <= 0)
-  | Bgt, _, _ -> Vbool (compare_value v1 v2 > 0)
-  | Bge, _, _ -> Vbool (compare_value v1 v2 >= 0)
-  | _ -> error "unsupported operand types"
+let is_true v = not (is_false v) (* TODO (question 2) *)
 
 (* We only have global functions in Mini-Python *)
 
 let functions = (Hashtbl.create 16 : (string, ident list * stmt) Hashtbl.t)
 
-(* The following exception is used to interpret Python's `return` *)
+(* The following exception is used to interpret `return` *)
 
 exception Return of value
 
@@ -104,93 +67,144 @@ exception Return of value
 
 type ctx = (string, value) Hashtbl.t
 
+(* helper functions *)
+
+let rec compare_list a1 n1 a2 n2 i =
+  if i = n1 && i = n2 then 0
+  else if i = n1 then -1
+  else if i = n2 then 1
+  else let c =  compare a1.(i) a2.(i) in
+    if c <> 0 then c else compare_list a1 n1 a2 n2 (i + 1)
+
+let rec compare_value v1 v2 = match v1, v2 with
+  | Vlist a1, Vlist a2 -> compare_list a1 (Array.length a1) a2 (Array.length a2) 0
+  | _ -> compare v1 v2
+
 (* Interpreting an expression (returns a value) *)
 
 let rec expr ctx = function
   | Ecst Cnone ->
       Vnone
-  | Ecst (Cbool b) ->
-      Vbool b
-  | Ecst (Cint n) ->
-      Vint (Int64.to_int n)
   | Ecst (Cstring s) ->
       Vstring s
-  | Ebinop (Band, e1, e2) ->
-      let v1 = expr ctx e1 in
-      if is_true v1 then expr ctx e2 else v1
-  | Ebinop (Bor, e1, e2) ->
-      let v1 = expr ctx e1 in
-      if is_false v1 then expr ctx e2 else v1
+  (* arithmetic *)
+  | Ecst (Cint n) ->
+        Vint (Int64.to_int n) (* TODO (question 1) *)
   | Ebinop (Badd | Bsub | Bmul | Bdiv | Bmod |
             Beq | Bneq | Blt | Ble | Bgt | Bge as op, e1, e2) ->
-      binop op (expr ctx e1) (expr ctx e2)
+      let v1 = expr ctx e1 in
+      let v2 = expr ctx e2 in
+      begin match op, v1, v2 with
+        | Badd, Vint n1, Vint n2 -> Vint (n1 + n2) (* TODO (question 1) *)
+        | Bsub, Vint n1, Vint n2 -> Vint (n1 - n2) (* TODO (question 1) *)
+        | Bmul, Vint n1, Vint n2 -> Vint (n1 * n2) (* TODO (question 1) *)
+        | (Bdiv | Bmod), Vint _, Vint 0 -> error "division by zero" 
+        | Bdiv, Vint n1, Vint n2 -> Vint (n1 / n2) (* TODO (question 1) *)
+        | Bmod, Vint n1, Vint n2 -> Vint (n1 mod n2) (* TODO (question 1) *)
+        | Beq, _, _  -> Vbool (compare_value v1 v2 = 0)(* TODO (question 2) *)
+        | Bneq, _, _ -> Vbool (compare_value v1 v2 <> 0) (* TODO (question 2) *)
+        | Blt, _, _  -> Vbool (compare_value v1 v2 < 0) (* TODO (question 2) *)
+        | Ble, _, _  -> Vbool (compare_value v1 v2 <= 0) (* TODO (question 2) *)
+        | Bgt, _, _  -> Vbool (compare_value v1 v2 > 0) (* TODO (question 2) *)
+        | Bge, _, _  -> Vbool (compare_value v1 v2 >= 0) (* TODO (question 2) *)
+        | Badd, Vstring s1, Vstring s2 ->
+            (* Vstring (String.cat s1 s2) *)
+            Vstring (s1 ^ s2) 
+            (* TODO (question 3) *)
+        | Badd, Vlist l1, Vlist l2 ->
+            Vlist (Array.append l1 l2)(* TODO (question 5) *)
+        | _ -> error "unsupported operand types"
+      end
   | Eunop (Uneg, e1) ->
       begin match expr ctx e1 with
-        | Vint n -> Vint (-n)
-        | _ -> error "unsupported operand types" end
+      | Vint n -> Vint (-n) 
+      | _ -> error "unsupported operand types" end(* TODO (question 1) *)
+  (* Boolean *)
+  | Ecst (Cbool b) ->
+      Vbool b (* TODO (question 2) *)
+  | Ebinop (Band, e1, e2) ->
+      let v1 = expr ctx e1 in 
+        if is_true v1 then expr ctx e2 else v1
+        (* TODO (question 2) *)
+  | Ebinop (Bor, e1, e2) ->
+    (* let v1 = match expr ctx e1 with
+      | Vbool b -> b
+      | _ -> failwith "Expected boolean expression" 
+    in 
+    let v2 = match expr ctx e2 with
+      | Vbool b -> b
+      | _ -> failwith "Expected boolean expression"
+    in 
+    Vbool (v1 || v2) *)
+    let v1 = expr ctx e1 in 
+      if is_true v1 then v1 else expr ctx e2
+    (* TODO (question 2) *)
   | Eunop (Unot, e1) ->
-      Vbool (is_false (expr ctx e1))
+      let v = match expr ctx e1 with
+      | Vbool b -> b 
+      | _ -> failwith "Expected boolean expression"
+      in 
+      Vbool (not (v))(* TODO (question 2) *)
+  | Eident {id} ->
+      if not (Hashtbl.mem ctx id) then error "unbound variable"; Hashtbl.find ctx id(* TODO (question 3) *)
+  (* function call *)
   | Ecall ({id="len"}, [e1]) ->
       begin match expr ctx e1 with
-        | Vstring s -> Vint (String.length s)
-        | Vlist l -> Vint (Array.length l)
-        | _ -> error "this value has no 'len'" end
+      | Vstring s -> Vint (String.length s)
+      | Vlist l -> Vint (Array.length l)
+      | _ -> error "this expression has no 'len'" end (* TODO (question 5) *)
   | Ecall ({id="list"}, [Ecall ({id="range"}, [e1])]) ->
-      let n = expr_int ctx e1 in
-      Vlist (Array.init (max 0 n) (fun i -> Vint i))
+      let n = expr_int ctx e1 in 
+      Vlist (Array.init (max 0 n) (fun i -> Vint i)) (* TODO (question 5) *)
   | Ecall ({id=f}, el) ->
-      if not (Hashtbl.mem functions f) then error ("unbound function " ^ f);
-      let args, body = Hashtbl.find functions f in
-      if List.length args <> List.length el then error "bad arity";
-      let ctx' = Hashtbl.create 16 in
-      List.iter2 (fun {id=x} e -> Hashtbl.add ctx' x (expr ctx e)) args el;
-      begin try stmt ctx' body; Vnone with Return v -> v end
+    if not (Hashtbl.mem functions f) then error ("unknown function " ^ f);
+    let args, body = Hashtbl.find functions f in
+    if List.length args <> List.length el then error "bad arity";
+    let ctx' = Hashtbl.create 16 in
+    List.iter2 (fun {id=x} e -> Hashtbl.add ctx' x (expr ctx e)) args el;
+    begin try stmt ctx' body; 
+      Vnone with Return v -> v end
+    (* TODO (question 4) *)
   | Elist el ->
-      Vlist (Array.of_list (List.map (expr ctx) el))
-  | Eident {id} ->
-      if not (Hashtbl.mem ctx id) then error "unbound variable";
-      Hashtbl.find ctx id
+      Vlist (Array.of_list(List.map (expr ctx) el))(* TODO (question 5) *)
   | Eget (e1, e2) ->
       begin match expr ctx e1 with
       | Vlist l ->
-          let i = expr_int ctx e2 in
-          (try l.(i) with Invalid_argument _ -> error "index out of bounds")
-      | _ -> error "list expected" end
+        let i = expr_int ctx e2 in
+        (try l.(i) with Invalid_argument _ -> error "index out of bounds")
+      | _ -> error "list expected" end(* TODO (question 5) *)
 
-(* Interpreting an expression, and checking that it is an integer *)
 
 and expr_int ctx e = match expr ctx e with
   | Vbool false -> 0
   | Vbool true -> 1
   | Vint n -> n
   | _ -> error "integer expected"
-
 (* Interpreting a statement
 
    returns nothing but may raise exception `Return` *)
 
 and stmt ctx = function
-  | Sif (e, s1, s2) ->
-      if is_true (expr ctx e) then stmt ctx s1 else stmt ctx s2
-  | Sreturn e ->
-      raise (Return (expr ctx e))
-  | Sassign ({id}, e1) ->
-      Hashtbl.replace ctx id (expr ctx e1)
-  | Sset (e1, e2, e3) ->
-      begin match expr ctx e1 with
-      | Vlist l -> l.(expr_int ctx e2) <- expr ctx e3
-      | _ -> error "list expected" end
+  | Seval e ->
+      ignore (expr ctx e)
   | Sprint e ->
       print_value (expr ctx e); printf "@."
   | Sblock bl ->
       block ctx bl
+  | Sif (e, s1, s2) ->
+      if is_true( expr ctx e ) then stmt ctx s1 else stmt ctx s2 (* TODO (question 2) *)
+  | Sassign ({id}, e1) ->
+      Hashtbl.replace ctx id (expr ctx e1)(* TODO (question 3) *)
+  | Sreturn e ->
+      raise (Return (expr ctx e))(* TODO (question 4) *)
   | Sfor ({id=x}, e, s) ->
       begin match expr ctx e with
-      | Vlist l ->
-        Array.iter (fun v -> Hashtbl.replace ctx x v; stmt ctx s) l
-      | _ -> error "list expected" end
-  | Seval e ->
-      ignore (expr ctx e)
+      | Vlist l -> Array.iter (fun v -> Hashtbl.replace ctx x v; stmt ctx s) l
+      | _ -> error "lits expected" end(* TODO (question 5) *)
+  | Sset (e1, e2, e3) ->
+      begin match expr ctx e1 with
+      | Vlist l -> l.(expr_int ctx e2) <- expr ctx e3
+      | _ -> error "list expected" end(* TODO (question 5) *)
 
 (* Interpreting a block (a sequence of statements) *)
 
@@ -198,9 +212,12 @@ and block ctx = function
   | [] -> ()
   | s :: sl -> stmt ctx s; block ctx sl
 
-(* Interpreting a file *)
+(* Interpreting a file
+   - `dl` is a list of function definitions (see type `def` in ast.ml)
+   - `s` is a statement (the toplevel code)
+*)
 
-let file (fl, s) =
-  List.iter
-    (fun (f,args,body) -> Hashtbl.add functions f.id (args, body)) fl;
+let file (dl, s) =
+  (* TODO (question 4) *)
+  List.iter (fun (f, args, body) -> Hashtbl.add functions f.id (args, body)) dl;
   stmt (Hashtbl.create 16) s

@@ -87,7 +87,7 @@ and string = parse
 	Buffer.reset string_buffer;
 	s }
   | "\\n"
-      { Buffer.add_char string_buffer '\n';
+      { Buffer.add_char string_buffer 'o';
 	string lexbuf }
   | "\\\""
       { Buffer.add_char string_buffer '"';
