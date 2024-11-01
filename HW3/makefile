@@ -6,4 +6,4 @@ all:
 
 q6:
 	ocamlopt a.ml lexer.ml -o a
-	./a > q6.txt 
+	./a > q6_out.txt 

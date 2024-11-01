@@ -91,14 +91,17 @@ type autom = {
 let eof = ('#', -1)
 
 let next_state r q c =
+  (* Fold over the filtered set, accumulating the result *)
   Cset.fold
-    (fun ci acc -> Cset.union acc (follow ci r))
+    (* for each character ci, add its correspounding follow set to the accumulated set `acc` *)
+      (fun ci acc -> Cset.union acc (follow ci r))
+      (* filter those states that match `c` *)
     (Cset.filter (fun (ci, _) -> ci = c) q)
     Cset.empty
 
 let make_dfa (r : regexp) : autom =
+  (* append eof *)
   let r = Concat (r, Character eof) in
-  (* transitions under construction *)
   let trans = ref Smap.empty in
   let rec transitions q =
     if not (Smap.mem q !trans) then (
@@ -166,11 +169,14 @@ let generate filename autom =
   let state_numbers = ref Smap.empty in
   let counter = ref 1 in
   let rec assign_numbers state =
+    (* if the state doesn't in `state_numbers` *)
     if not (Smap.mem state !state_numbers) then (
       state_numbers := Smap.add state !counter !state_numbers;
       counter := !counter + 1;
+      (* find value in autom.trans where key = state *)
       match Smap.find_opt state autom.trans with
       | Some cmap ->
+          (* discard key (character), assign number to a state and store in state_numbers *)
           Cmap.iter (fun _ next_state -> assign_numbers next_state) cmap
       | None -> ())
   in
@@ -182,7 +188,7 @@ let generate filename autom =
 
   (* Output prelude *)
   Format.fprintf fmt
-    "(* This file is auto generated. Do not modify it manually *)@\n@\n";
+    "(* This file is auto generated. Do not modify it manually 😼*)@\n@\n";
   Format.fprintf fmt
     "type buffer = { text: string; mutable current: int; mutable last: int }@\n";
   Format.fprintf fmt "let next_char b =@\n";
@@ -199,6 +205,7 @@ let generate filename autom =
       Format.fprintf fmt "let rec state%d b =@\n" n;
       if is_accepting state then Format.fprintf fmt "  b.last <- b.current;@\n";
       Format.fprintf fmt "  let c = next_char b in@\n";
+      (* retrive every transition wiht respect to a state *)
       let cmap =
         match Smap.find_opt state autom.trans with
         | Some cmap -> cmap
@@ -208,7 +215,9 @@ let generate filename autom =
       Format.fprintf fmt "  match c with@\n";
       (* For each transition *)
       Cmap.iter
-        (fun c next_state ->
+        (* key: Character, value : state *)
+          (fun c next_state ->
+          (* get the number of the next state in `state_numbers` *)
           let next_n = Smap.find next_state !state_numbers in
           Format.fprintf fmt "  | %C -> state%d b@\n" c next_n)
         cmap;
