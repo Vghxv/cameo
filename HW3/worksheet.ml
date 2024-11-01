@@ -329,3 +329,17 @@ let a = make_dfa r3
 let () = save_autom "autom3.dot" a
 let () = generate "a.ml" a
 let () = print_endline "ex6(generate): OK"
+
+(* loop case *)
+(* (b|e)(ab)*(a|e) *)
+let r4 =
+  Concat
+    ( Concat
+        ( Union (Character ('b', 1), Epsilon),
+          Star (Concat (Character ('a', 1), Character ('b', 2))) ),
+      Union (Character ('a', 2), Epsilon) )
+
+let a = make_dfa r4
+let () = save_autom "autom4.dot" a
+let () = generate "b.ml" a
+let () = print_endline "ex6(generate): OK"
