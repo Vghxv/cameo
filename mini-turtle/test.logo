@@ -4,4 +4,25 @@
 // then complete this file as the tests progress
 
 
+(* forward 100 *)
+
+turnleft 90
+color red
+forward 200
+
+turnleft 90
+color green
 forward 100
+
+turnright 90
+color blue
+forward 50
+
+color black
+turnright 90
+
+if 0 { forward 100 } else { forward 50 }
+repeat 4 {
+    forward 25
+    turnleft 90
+}
