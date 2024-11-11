@@ -39,15 +39,7 @@
 
 /* Type of values ​​returned by the parser */
 %type <Ast.program> prog
-%type <Ast.def list> defs
-%type <Ast.def> def
-%type <Ast.stmt list> stmts
-%type <Ast.stmt> stmt
-%type <Ast.expr> expr
-%type <Ast.expr list> args
-%type <Ast.expr list> arg_list
-%type <string list> params
-%type <string list> param_list
+
 %%
 
 /* Production rules of the grammar */
